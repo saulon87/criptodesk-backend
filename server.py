@@ -9,7 +9,7 @@ import base64
 import hashlib
 import requests
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=".", static_url_path="")
 
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
@@ -207,7 +207,7 @@ def build_analysis(settings):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return app.send_static_file("index.html")
 
 @app.route("/api/settings", methods=["GET", "POST"])
 def settings_api():
