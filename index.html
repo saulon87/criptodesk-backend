@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CriptoDesk</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="manifest" href="/static/manifest.json" />
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <div>
+        <h1>CriptoDesk</h1>
+        <p>Dashboard Spot administrable para Ethereum</p>
+      </div>
+      <button id="refreshBtn">Actualizar</button>
+    </header>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Gestión de capital</h2>
+        <label>Saldo disponible USDT</label>
+        <input id="balanceInput" type="number" step="0.01" min="0" />
+        <label>Capital máximo a utilizar (%)</label>
+        <input id="percentInput" type="number" step="1" min="0" max="100" />
+        <div class="metric">
+          <span>Capital operativo máximo</span>
+          <strong id="operativeCapital">--</strong>
+        </div>
+        <button id="saveSettingsBtn">Guardar configuración</button>
+      </article>
+
+      <article class="card decision">
+        <h2>Decisión principal</h2>
+        <div id="recommendation" class="big">--</div>
+        <p id="decisionText">Cargando información del mercado...</p>
+      </article>
+
+      <article class="card">
+        <h2>ETH / USDT</h2>
+        <div class="metric"><span>Precio actual</span><strong id="price">--</strong></div>
+        <div class="metric"><span>Tendencia</span><strong id="trend">--</strong></div>
+        <div class="metric"><span>Variación 24h</span><strong id="change24h">--</strong></div>
+      </article>
+
+      <article class="card">
+        <h2>Riesgo</h2>
+        <div id="risk" class="risk">--</div>
+        <div class="metric"><span>Volumen</span><strong id="volume">--</strong></div>
+        <div class="metric"><span>Sentimiento</span><strong id="sentiment">--</strong></div>
+      </article>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Soportes y resistencias</h2>
+        <div class="metric"><span>Soporte 1</span><strong id="support1">--</strong></div>
+        <div class="metric"><span>Soporte 2</span><strong id="support2">--</strong></div>
+        <div class="metric"><span>Resistencia 1</span><strong id="resistance1">--</strong></div>
+        <div class="metric"><span>Resistencia 2</span><strong id="resistance2">--</strong></div>
+      </article>
+
+      <article class="card">
+        <h2>Operación sugerida</h2>
+        <div class="metric"><span>Capital sugerido</span><strong id="suggestedCapital">--</strong></div>
+        <div class="metric"><span>Entrada</span><strong id="entryRange">--</strong></div>
+        <div class="metric"><span>Stop loss</span><strong id="stopLoss">--</strong></div>
+        <div class="metric"><span>Objetivo</span><strong id="target">--</strong></div>
+        <div class="metric"><span>Riesgo / beneficio</span><strong id="riskReward">--</strong></div>
+      </article>
+
+      <article class="card wide">
+        <h2>Análisis</h2>
+        <p id="breakoutPullback">--</p>
+        <p id="notes">--</p>
+      </article>
+    </section>
+
+    <section class="card">
+      <div class="tableHeader">
+        <h2>Historial acumulativo</h2>
+        <button id="clearHistoryBtn" class="secondary">Limpiar historial</button>
+      </div>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha y hora</th>
+              <th>Precio ETH</th>
+              <th>Recomendación</th>
+              <th>Riesgo</th>
+              <th>Entrada</th>
+              <th>Stop</th>
+              <th>Objetivo</th>
+              <th>Capital</th>
+              <th>Observaciones</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>

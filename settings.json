@@ -1,0 +1,13 @@
+{
+  "available_balance_usdt": 9.44,
+  "capital_percent": 65,
+  "main_asset": "ETH",
+  "quote_asset": "USDT",
+  "strategy_mode": "spot_administrable",
+  "min_risk_reward": 1.7,
+  "max_stop_loss_percent": 2.5,
+  "target_gain_percent": 4.0,
+  "allow_futures": false,
+  "allow_margin": false,
+  "allow_leverage": false
+}
