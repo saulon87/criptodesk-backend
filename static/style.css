@@ -1,0 +1,146 @@
+:root {
+  --bg: #101318;
+  --card: #181d24;
+  --text: #f1f4f8;
+  --muted: #aeb7c2;
+  --line: #2a3340;
+  --accent: #67d3a0;
+  --warn: #ffcc66;
+  --danger: #ff6b6b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.container {
+  width: min(1180px, 94%);
+  margin: 0 auto;
+  padding: 28px 0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+h1, h2, p { margin-top: 0; }
+
+h1 { margin-bottom: 4px; }
+
+p { color: var(--muted); line-height: 1.45; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 10px 25px rgba(0,0,0,.18);
+}
+
+.wide { grid-column: span 2; }
+
+.decision { grid-column: span 1; }
+
+.big {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 12px 0;
+  color: var(--accent);
+}
+
+.risk {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 14px 0;
+}
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 10px 0;
+}
+
+.metric span { color: var(--muted); }
+.metric strong { text-align: right; }
+
+label {
+  display: block;
+  color: var(--muted);
+  margin: 12px 0 6px;
+}
+
+input {
+  width: 100%;
+  background: #0f1319;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  color: var(--text);
+  font-size: 16px;
+}
+
+button {
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  background: var(--accent);
+  color: #06100b;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+
+button:hover { filter: brightness(1.04); }
+
+.tableHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.tableWrap { overflow-x: auto; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 960px;
+}
+
+th, td {
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  padding: 11px;
+  color: var(--muted);
+}
+
+th { color: var(--text); }
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+  .wide, .decision { grid-column: span 1; }
+  .header { align-items: flex-start; flex-direction: column; }
+}
