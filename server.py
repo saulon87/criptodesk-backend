@@ -1,10 +1,9 @@
 import os
-import time
 import hmac
 import base64
 import hashlib
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import httpx
 from fastapi import FastAPI
@@ -13,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 OKX_BASE = "https://www.okx.com"
 MAX_CAPITAL = 9.44
 
-app = FastAPI(title="CriptoDesk OKX Backend", version="1.0.0")
+app = FastAPI(title="CriptoDesk OKX Backend", version="1.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,14 +31,26 @@ SYMBOLS = {
     "BNB": "BNB-USDT",
 }
 
+STABLES = {"USDT", "USDC", "USD"}
+
+
 def iso_ts() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def safe_float(value: Any) -> float:
+    try:
+        return float(value or 0)
+    except Exception:
+        return 0.0
+
 
 def env_required(name: str) -> str:
     value = os.getenv(name, "").strip()
     if not value:
         raise RuntimeError(f"Falta variable de entorno: {name}")
     return value
+
 
 def okx_headers(method: str, path: str, body: str = "") -> Dict[str, str]:
     api_key = env_required("OKX_API_KEY")
@@ -49,7 +60,11 @@ def okx_headers(method: str, path: str, body: str = "") -> Dict[str, str]:
     timestamp = iso_ts()
     prehash = f"{timestamp}{method.upper()}{path}{body}"
     signature = base64.b64encode(
-        hmac.new(secret_key.encode("utf-8"), prehash.encode("utf-8"), hashlib.sha256).digest()
+        hmac.new(
+            secret_key.encode("utf-8"),
+            prehash.encode("utf-8"),
+            hashlib.sha256,
+        ).digest()
     ).decode("utf-8")
 
     return {
@@ -61,87 +76,171 @@ def okx_headers(method: str, path: str, body: str = "") -> Dict[str, str]:
         "x-simulated-trading": "0",
     }
 
-async def public_ticker(client: httpx.AsyncClient, inst_id: str) -> float:
-    r = await client.get(f"{OKX_BASE}/api/v5/market/ticker", params={"instId": inst_id})
-    r.raise_for_status()
-    data = r.json()
-    return float(data["data"][0]["last"])
 
 async def okx_get(client: httpx.AsyncClient, path: str) -> Dict[str, Any]:
     headers = okx_headers("GET", path, "")
-    r = await client.get(f"{OKX_BASE}{path}", headers=headers)
-    r.raise_for_status()
-    return r.json()
+    response = await client.get(f"{OKX_BASE}{path}", headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+
+async def public_ticker(client: httpx.AsyncClient, inst_id: str) -> float:
+    response = await client.get(
+        f"{OKX_BASE}/api/v5/market/ticker",
+        params={"instId": inst_id},
+    )
+    response.raise_for_status()
+    data = response.json()
+    return safe_float(data.get("data", [{}])[0].get("last"))
+
 
 def score_from_price(price: float, base: int) -> int:
-    # Score simple y estable, compatible con la lógica visual actual.
     if not price:
         return base
     return max(0, min(100, 45 + round((price % 100) / 100 * 25)))
 
+
 @app.get("/")
 async def root() -> Dict[str, Any]:
-    return {"ok": True, "service": "CriptoDesk OKX Backend", "endpoints": ["/api/health", "/api/summary"]}
+    return {
+        "ok": True,
+        "service": "CriptoDesk OKX Backend",
+        "version": "1.1.0",
+        "endpoints": ["/api/health", "/api/summary"],
+    }
+
 
 @app.get("/api/health")
 async def health() -> Dict[str, Any]:
-    return {"ok": True, "service": "CriptoDesk OKX Backend", "updatedAt": iso_ts()}
+    return {
+        "ok": True,
+        "service": "CriptoDesk OKX Backend",
+        "version": "1.1.0",
+        "updatedAt": iso_ts(),
+    }
+
 
 @app.get("/api/summary")
 async def summary() -> Dict[str, Any]:
-    async with httpx.AsyncClient(timeout=12.0) as client:
+    async with httpx.AsyncClient(timeout=15.0) as client:
         prices: Dict[str, float] = {}
-        for sym, inst in SYMBOLS.items():
+
+        for sym, inst_id in SYMBOLS.items():
             try:
-                prices[sym] = await public_ticker(client, inst)
+                prices[sym] = await public_ticker(client, inst_id)
             except Exception:
                 prices[sym] = 0.0
 
-        available_usdt: Optional[float] = None
-        balances: Dict[str, float] = {sym: 0.0 for sym in SYMBOLS.keys()}
+        trading_balances: Dict[str, float] = {sym: 0.0 for sym in SYMBOLS}
+        funding_balances: Dict[str, float] = {sym: 0.0 for sym in SYMBOLS}
+
+        trading_usdt = 0.0
+        funding_usdt = 0.0
+        trading_total_usd = 0.0
+        funding_total_usd = 0.0
+        warnings: List[str] = []
 
         try:
             account = await okx_get(client, "/api/v5/account/balance")
-            details = account.get("data", [{}])[0].get("details", [])
+            account_data = account.get("data", [])
+
+            if account_data:
+                details = account_data[0].get("details", [])
+
+                for item in details:
+                    ccy = item.get("ccy")
+                    cash_bal = safe_float(item.get("cashBal"))
+                    avail_bal = safe_float(item.get("availBal"))
+                    eq_usd = safe_float(item.get("eqUsd"))
+
+                    qty = cash_bal if cash_bal else avail_bal
+
+                    if ccy == "USDT":
+                        trading_usdt = avail_bal if avail_bal else cash_bal
+
+                    if ccy in trading_balances:
+                        trading_balances[ccy] = qty
+
+                    trading_total_usd += eq_usd
+
+        except Exception as exc:
+            warnings.append(f"No se pudo leer Trading: {str(exc)}")
+
+        try:
+            asset = await okx_get(client, "/api/v5/asset/balances")
+            details = asset.get("data", [])
+
             for item in details:
                 ccy = item.get("ccy")
-                qty = float(item.get("cashBal") or item.get("availBal") or 0)
+                bal = safe_float(item.get("bal"))
+                avail_bal = safe_float(item.get("availBal"))
+                avail_eq = safe_float(item.get("availEq"))
+
+                qty = bal or avail_bal or avail_eq
+
                 if ccy == "USDT":
-                    available_usdt = float(item.get("availBal") or item.get("cashBal") or 0)
-                if ccy in balances:
-                    balances[ccy] = qty
+                    funding_usdt = avail_bal or bal or avail_eq
+
+                if ccy in funding_balances:
+                    funding_balances[ccy] = qty
+
+                if ccy in STABLES:
+                    funding_total_usd += qty
+                elif ccy in SYMBOLS:
+                    funding_total_usd += qty * prices.get(ccy, 0.0)
+
         except Exception as exc:
-            return {
-                "ok": False,
-                "error": f"No fue posible leer OKX: {str(exc)}",
-                "ethPrice": prices.get("ETH", 0.0),
-                "updatedAt": iso_ts(),
-            }
+            warnings.append(f"No se pudo leer Funding/Fondos: {str(exc)}")
+
+        combined_balances: Dict[str, float] = {}
+        for sym in SYMBOLS:
+            combined_balances[sym] = trading_balances.get(sym, 0.0) + funding_balances.get(sym, 0.0)
+
+        available_usdt = trading_usdt + funding_usdt
+        capped_capital = min(available_usdt, MAX_CAPITAL)
+        estimated_total_usd = trading_total_usd + funding_total_usd
+
+        base_scores = {
+            "ETH": 57,
+            "XRP": 53,
+            "SUI": 50,
+            "BTC": 49,
+            "SOL": 49,
+            "BNB": 48,
+        }
 
         assets: List[Dict[str, Any]] = []
-        base_scores = {"ETH": 57, "XRP": 53, "SUI": 50, "BTC": 49, "SOL": 49, "BNB": 48}
-        for sym in SYMBOLS.keys():
+        for sym in SYMBOLS:
             price = prices.get(sym, 0.0)
-            qty = balances.get(sym, 0.0)
-            assets.append({
-                "sym": sym,
-                "qty": qty,
-                "price": price,
-                "value": qty * price,
-                "avg": 0.0,
-                "score": score_from_price(price, base_scores.get(sym, 50)),
-            })
-
-        capped = min(available_usdt or 0.0, MAX_CAPITAL)
+            qty = combined_balances.get(sym, 0.0)
+            assets.append(
+                {
+                    "sym": sym,
+                    "qty": qty,
+                    "tradingQty": trading_balances.get(sym, 0.0),
+                    "fundingQty": funding_balances.get(sym, 0.0),
+                    "price": price,
+                    "value": qty * price,
+                    "avg": 0.0,
+                    "score": score_from_price(price, base_scores.get(sym, 50)),
+                }
+            )
 
         return {
-            "ok": True,
+            "ok": len(warnings) < 2,
             "source": "OKX",
+            "version": "1.1.0",
             "ethPrice": prices.get("ETH", 0.0),
-            "ethQty": balances.get("ETH", 0.0),
+            "ethQty": combined_balances.get("ETH", 0.0),
             "ethAvg": 0.0,
-            "availableUsdt": available_usdt or 0.0,
-            "cappedCapital": capped,
+            "availableUsdt": available_usdt,
+            "tradingUsdt": trading_usdt,
+            "fundingUsdt": funding_usdt,
+            "cappedCapital": capped_capital,
+            "estimatedTotalUsd": estimated_total_usd,
+            "tradingTotalUsd": trading_total_usd,
+            "fundingTotalUsd": funding_total_usd,
             "assets": assets,
+            "warnings": warnings,
             "updatedAt": iso_ts(),
         }
