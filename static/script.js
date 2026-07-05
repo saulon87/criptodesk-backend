@@ -103,6 +103,10 @@ function applyRiskClass(riskValue) {
 
 function renderDashboard(data) {
   setText("operativeCapital", formatMoney(data.operative_capital));
+  setText("availableBalance", formatMoney(data.available_balance));
+  setText("balanceSource", data.balance_source || "Manual");
+  setText("apiStatus", data.api_connected ? "OKX conectado" : "OKX no conectado");
+  
   setText("recommendation", data.recommendation || "--");
   setText("decisionText", data.decision || "--");
 
