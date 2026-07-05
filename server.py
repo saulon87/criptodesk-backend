@@ -11,11 +11,10 @@ import requests
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 
-DATA_DIR = Path("data")
-DATA_DIR.mkdir(exist_ok=True)
+BASE_DIR = Path(__file__).resolve().parent
 
-SETTINGS_FILE = DATA_DIR / "settings.json"
-HISTORY_FILE = DATA_DIR / "history.json"
+SETTINGS_FILE = BASE_DIR / "settings.json"
+HISTORY_FILE = BASE_DIR / "history.json"
 
 DEFAULT_SETTINGS = {
     "available_balance_usdt": 9.44,
