@@ -115,13 +115,19 @@ def build_analysis(settings):
     ticker = okx_public_ticker("ETH-USDT")
     price = ticker["price"]
 
-    api_balance = None
-    try:
-        api_balance = okx_private_balance()
-    except Exception:
-        api_balance = None
+api_balance = None
+balance_source = "Manual"
+api_connected = False
 
-    available_balance = api_balance if api_balance is not None else float(settings["available_balance_usdt"])
+try:
+    api_balance = okx_private_balance()
+    if api_balance is not None:
+        balance_source = "OKX API"
+        api_connected = True
+except Exception:
+    api_balance = None
+
+available_balance = api_balance if api_balance is not None else float(settings["available_balance_usdt"])
     capital_percent = max(0, min(100, float(settings["capital_percent"])))
     operative_capital = round(available_balance * (capital_percent / 100), 2)
 
@@ -180,6 +186,8 @@ def build_analysis(settings):
         "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "price": round(price, 2),
         "available_balance": round(available_balance, 2),
+        "balance_source": balance_source,
+        "api_connected": api_connected,
         "capital_percent": capital_percent,
         "operative_capital": operative_capital,
         "suggested_capital": min(suggested_capital, operative_capital),
@@ -250,5 +258,42 @@ def clear_history_api():
     write_json(HISTORY_FILE, [])
     return jsonify({"ok": True})
 
+@app.route("/health")
+def health():
+    return jsonify({
+        "ok": True,
+        "service": "CriptoDesk",
+        "status": "live",
+        "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+
+@app.route("/api/okx/status")
+def okx_status():
+    try:
+        balance = okx_private_balance()
+
+        if balance is None:
+            return jsonify({
+                "ok": False,
+                "connected": False,
+                "balance_source": "Manual",
+                "message": "API de OKX no disponible o credenciales incompletas."
+            })
+
+        return jsonify({
+            "ok": True,
+            "connected": True,
+            "balance_source": "OKX API",
+            "available_balance": round(balance, 2),
+            "message": "API de OKX conectada correctamente."
+        })
+
+    except Exception as exc:
+        return jsonify({
+            "ok": False,
+            "connected": False,
+            "balance_source": "Manual",
+            "error": str(exc)
+        }), 500
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
