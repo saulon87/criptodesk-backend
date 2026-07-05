@@ -1,0 +1,9 @@
+{
+  "name": "CriptoDesk",
+  "short_name": "CriptoDesk",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#101318",
+  "theme_color": "#101318",
+  "icons": []
+}
