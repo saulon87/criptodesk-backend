@@ -115,22 +115,21 @@ def build_analysis(settings):
     ticker = okx_public_ticker("ETH-USDT")
     price = ticker["price"]
 
-api_balance = None
-balance_source = "Manual"
-api_connected = False
-
-try:
-    api_balance = okx_private_balance()
-    if api_balance is not None:
-        balance_source = "OKX API"
-        api_connected = True
-except Exception:
     api_balance = None
+    balance_source = "Manual"
+    api_connected = False
 
-available_balance = api_balance if api_balance is not None else float(settings["available_balance_usdt"])
+    try:
+        api_balance = okx_private_balance()
+        if api_balance is not None:
+            balance_source = "OKX API"
+            api_connected = True
+    except Exception:
+        api_balance = None
+
+    available_balance = api_balance if api_balance is not None else float(settings["available_balance_usdt"])
     capital_percent = max(0, min(100, float(settings["capital_percent"])))
     operative_capital = round(available_balance * (capital_percent / 100), 2)
-
     open_24h = ticker["open_24h"]
     high_24h = ticker["high_24h"]
     low_24h = ticker["low_24h"]
